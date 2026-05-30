@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "920019057231",
+    "project_id": "skamp-f2367",
+    "storage_bucket": "skamp-f2367.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:920019057231:android:6b25beb7425683ff9c883a",
+        "android_client_info": {
+          "package_name": "com.skamp.skamp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "920019057231-na12bu2gr80lk30ub84slbl9e7otsrjv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skamp.skamp",
+            "certificate_hash": "69dab7273079bf208bfe7df38015b0e086f2a3e6"
+          }
+        },
+        {
+          "client_id": "920019057231-taa7m9r199ff4uaks4kubb301qv3c7ug.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs9XFpU7B022cGvAbfdXOO4SGkwZ_FJsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "920019057231-taa7m9r199ff4uaks4kubb301qv3c7ug.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "920019057231-1da54pk9i4669sh67hjspc6l3323btio.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.skamp.skamp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
