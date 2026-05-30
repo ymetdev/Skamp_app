@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   static const cream = Color(0xFFF5F0E8);
@@ -22,7 +23,7 @@ class AppTheme {
           error: AppColors.error,
           surface: AppColors.paper,
         ),
-        fontFamily: 'Courier',
+        textTheme: GoogleFonts.instrumentSansTextTheme(),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.cream,
           foregroundColor: AppColors.inkBlack,

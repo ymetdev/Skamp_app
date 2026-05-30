@@ -72,6 +72,47 @@ class StampRepository {
         .map((s) => s.docs.map(RubberStamp.fromFirestore).toList());
   }
 
+  // ── Capture from bytes (cropped image) ────────────────────────────────────
+
+  Future<PaperStamp> createPaperStampFromBytes({
+    required String uid,
+    required List<int> imageBytes,
+    required StampShape shape,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final stampId = const Uuid().v4();
+
+    final imageUrl = await _cloudinary.uploadBytes(
+      imageBytes,
+      'stamp_$stampId.png',
+      folder: CloudinaryFolder.stamps,
+      publicId: '$uid/$stampId',
+    );
+    final thumbUrl = _cloudinary.thumbnailUrl(imageUrl, size: 400);
+
+    final stamp = PaperStamp(
+      id: stampId,
+      ownerId: uid,
+      imageUrl: imageUrl,
+      thumbnailUrl: thumbUrl,
+      shape: shape,
+      capturedAt: DateTime.now(),
+      latitude: latitude,
+      longitude: longitude,
+    );
+
+    await _db.collection('stamps').doc(stampId).set(stamp.toFirestore());
+    await _incrementDailyCount(uid);
+    return stamp;
+  }
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  Future<void> deletePaperStamp(String stampId) async {
+    await _db.collection('stamps').doc(stampId).delete();
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   Future<void> _incrementDailyCount(String uid) async {

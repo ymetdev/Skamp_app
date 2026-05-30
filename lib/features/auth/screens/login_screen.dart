@@ -67,9 +67,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               const SizedBox(height: 64),
               // Logo
-              Image.asset('assets/2.png', width: 88),
+              Image.asset('assets/icon_stamp.png', width: 88),
               const SizedBox(height: 16),
-              Image.asset('assets/4.png', width: 180),
+              Image.asset('assets/wordmark.png', width: 180),
               const SizedBox(height: 8),
               const Text(
                 'stamp your world',

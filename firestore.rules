@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // ── Users ──────────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Any authenticated user can read profiles (needed for friend lookup)
+      allow read: if isAuth();
+
+      // Only the user themselves can create/update their own doc
+      allow create: if isOwner(uid);
+
+      // Normal users cannot change isPremium.
+      // Exception: UIDs listed in config/devAccess.uids may toggle their own premium.
+      allow update: if isOwner(uid) && (
+        request.resource.data.isPremium == resource.data.isPremium ||
+        (exists(/databases/$(database)/documents/config/devAccess) &&
+         request.auth.uid in get(/databases/$(database)/documents/config/devAccess).data.uids)
+      );
+
+      allow delete: if false;
+    }
+
+    // ── Username reverse lookup ────────────────────────────────────────────────
+    match /usernames/{username} {
+      allow read: if isAuth();
+      // Only the matching user can claim/update their username entry
+      allow write: if isOwner(request.resource.data.uid);
+    }
+
+    // ── Invite codes ───────────────────────────────────────────────────────────
+    match /inviteCodes/{code} {
+      allow read: if isAuth();
+      // Client can only flip used: false → true and set usedBy to themselves
+      allow update: if isAuth()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == request.auth.uid
+        && request.resource.data.keys().hasAll(['used', 'usedBy', 'usedAt']);
+      allow create, delete: if false;
+    }
+
+    // ── App config (read-only from client) ────────────────────────────────────
+    match /config/{document} {
+      allow read: if isAuth();
+      allow write: if false;
+    }
+
+    // ── Friends subcollection ─────────────────────────────────────────────────
+    match /users/{uid}/friends/{friendUid} {
+      // Only I manage my own friends list
+      allow read, write: if isOwner(uid);
+    }
+
+    // ── Paper stamps ──────────────────────────────────────────────────────────
+    match /stamps/{stampId} {
+      // Owner can read; friends who added this owner can also read (for feed)
+      allow read: if isAuth() && (
+        resource.data.ownerId == request.auth.uid ||
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(resource.data.ownerId))
+      );
+
+      allow create: if isOwner(request.resource.data.ownerId)
+        && request.resource.data.isPlaced == false;
+
+      allow update: if isOwner(resource.data.ownerId);
+      allow delete: if isOwner(resource.data.ownerId);
+    }
+
+    // ── Rubber stamps (written only by Cloud Functions) ────────────────────────
+    match /rubberStamps/{stampId} {
+      allow read: if isAuth() && resource.data.ownerId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ── Journals ──────────────────────────────────────────────────────────────
+    match /journals/{journalId} {
+      allow read: if isAuth() && resource.data.ownerId == request.auth.uid;
+      allow create: if isOwner(request.resource.data.ownerId);
+      allow update, delete: if isAuth() && resource.data.ownerId == request.auth.uid;
+
+      // Pages subcollection — gate on parent journal ownership
+      match /pages/{pageId} {
+        allow read, write: if isAuth()
+          && get(/databases/$(database)/documents/journals/$(journalId))
+              .data.ownerId == request.auth.uid;
+      }
+    }
+  }
+}

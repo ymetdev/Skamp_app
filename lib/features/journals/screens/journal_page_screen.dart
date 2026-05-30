@@ -83,10 +83,10 @@ class _JournalPageScreenState extends ConsumerState<JournalPageScreen> {
           : _PageCanvas(
               stamps: _stamps!,
               paperStyle: journal?.paperStyle ?? PaperStyle.blank,
-              onStampMoved: (id, x, y) {
+              onStampMoved: (id, x, y, scale) {
                 setState(() {
                   _stamps = _stamps!
-                      .map((s) => s.id == id ? s.copyWith(x: x, y: y) : s)
+                      .map((s) => s.id == id ? s.copyWith(x: x, y: y, scale: scale) : s)
                       .toList();
                 });
                 _save();
@@ -171,7 +171,7 @@ class _JournalPageScreenState extends ConsumerState<JournalPageScreen> {
 class _PageCanvas extends StatelessWidget {
   final List<PlacedStamp> stamps;
   final PaperStyle paperStyle;
-  final void Function(String id, double x, double y) onStampMoved;
+  final void Function(String id, double x, double y, double scale) onStampMoved;
   final void Function(String id, String stampId, bool isRubber) onStampDeleted;
 
   const _PageCanvas({
@@ -216,8 +216,8 @@ class _PageCanvas extends StatelessWidget {
                             stamp: s,
                             pageWidth: pw,
                             pageHeight: ph,
-                            onMoved: (x, y) =>
-                                onStampMoved(s.id, x, y),
+                            onMoved: (x, y, scale) =>
+                                onStampMoved(s.id, x, y, scale),
                             onDelete: () =>
                                 onStampDeleted(s.id, s.stampId, s.isRubber),
                           )),
@@ -248,7 +248,7 @@ class _DraggableStamp extends StatefulWidget {
   final PlacedStamp stamp;
   final double pageWidth;
   final double pageHeight;
-  final void Function(double x, double y) onMoved;
+  final void Function(double x, double y, double scale) onMoved;
   final VoidCallback onDelete;
 
   const _DraggableStamp({
@@ -267,12 +267,16 @@ class _DraggableStamp extends StatefulWidget {
 class _DraggableStampState extends State<_DraggableStamp> {
   late double _x;
   late double _y;
+  late double _scale;
+  bool _isDragging = false;
+  double _baseScale = 1.0;
 
   @override
   void initState() {
     super.initState();
     _x = widget.stamp.x;
     _y = widget.stamp.y;
+    _scale = widget.stamp.scale;
   }
 
   @override
@@ -281,14 +285,13 @@ class _DraggableStampState extends State<_DraggableStamp> {
     if (!_isDragging) {
       _x = widget.stamp.x;
       _y = widget.stamp.y;
+      _scale = widget.stamp.scale;
     }
   }
 
-  bool _isDragging = false;
-
   @override
   Widget build(BuildContext context) {
-    final sw = widget.pageWidth * 0.28 * widget.stamp.scale;
+    final sw = widget.pageWidth * 0.28 * _scale;
     final sh = sw / kStampAspect;
     final left = _x * widget.pageWidth - sw / 2;
     final top = _y * widget.pageHeight - sh / 2;
@@ -299,16 +302,24 @@ class _DraggableStampState extends State<_DraggableStamp> {
       width: sw,
       height: sh,
       child: GestureDetector(
-        onPanStart: (_) => setState(() => _isDragging = true),
-        onPanUpdate: (d) {
+        onScaleStart: (_) {
+          _baseScale = _scale;
+          setState(() => _isDragging = true);
+        },
+        onScaleUpdate: (d) {
           setState(() {
-            _x = (_x + d.delta.dx / widget.pageWidth).clamp(0.05, 0.95);
-            _y = (_y + d.delta.dy / widget.pageHeight).clamp(0.05, 0.95);
+            // Single-finger drag
+            _x = (_x + d.focalPointDelta.dx / widget.pageWidth).clamp(0.05, 0.95);
+            _y = (_y + d.focalPointDelta.dy / widget.pageHeight).clamp(0.05, 0.95);
+            // Pinch-to-scale (2+ fingers)
+            if (d.pointerCount >= 2) {
+              _scale = (_baseScale * d.scale).clamp(0.4, 3.0);
+            }
           });
         },
-        onPanEnd: (_) {
+        onScaleEnd: (_) {
           setState(() => _isDragging = false);
-          widget.onMoved(_x, _y);
+          widget.onMoved(_x, _y, _scale);
         },
         onLongPress: () => _confirmDelete(context),
         child: ClipPath(

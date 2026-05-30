@@ -66,6 +66,29 @@ class StampCaptureNotifier extends Notifier<AsyncValue<PaperStamp?>> {
     return result.value;
   }
 
+  Future<PaperStamp?> captureFromBytes({
+    required List<int> imageBytes,
+    required StampShape shape,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final uid = ref.read(authStateProvider).value?.uid;
+    if (uid == null) return null;
+
+    state = const AsyncValue.loading();
+    final result = await AsyncValue.guard(
+      () => ref.read(stampRepositoryProvider).createPaperStampFromBytes(
+            uid: uid,
+            imageBytes: imageBytes,
+            shape: shape,
+            latitude: latitude,
+            longitude: longitude,
+          ),
+    );
+    state = result;
+    return result.value;
+  }
+
   void reset() => state = const AsyncValue.data(null);
 }
 

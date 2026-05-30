@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../models/journal_model.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/journal_provider.dart';
 import '../repositories/journal_repository.dart';
 
 const Map<String, Color> kCoverColors = {
   'cream': Color(0xFFF0E8D0),
-  'tan': Color(0xFFD4C4A8),
-  'blue': Color(0xFFB8C5D6),
-  'sage': Color(0xFFB5C4B5),
-  'rose': Color(0xFFD4B8B8),
-  'dark': Color(0xFF3A3530),
+  'tan':   Color(0xFFD4C4A8),
+  'blue':  Color(0xFFBDD4E8),
+  'sage':  Color(0xFFB5C4B5),
+  'rose':  Color(0xFFD4B8B8),
+  'dark':  Color(0xFF3A3530),
 };
 
-Color coverColorValue(String key) =>
-    kCoverColors[key] ?? kCoverColors['cream']!;
-
+Color coverColorValue(String key) => kCoverColors[key] ?? kCoverColors['cream']!;
 bool coverIsDark(String key) => key == 'dark';
 
 class JournalListScreen extends ConsumerWidget {
@@ -29,72 +27,109 @@ class JournalListScreen extends ConsumerWidget {
     final journals = ref.watch(myJournalsProvider);
     final user = ref.watch(userProvider).value;
     final maxJournals = (user?.isPremium ?? false) ? 999 : 3;
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final navH = 8.0 + 64.0 + (bottom > 0 ? bottom : 16.0);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Journals',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-      ),
-      body: journals.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-            child: Text('Error loading journals',
-                style: TextStyle(color: AppColors.error))),
-        data: (list) {
-          final canAdd = list.length < maxJournals;
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 10 / 14,
+    return ColoredBox(
+      color: const Color(0xFF1A1A1A),
+      child: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text('Journals', style: TextStyle(
+                  color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700,
+                )),
+              ),
             ),
-            itemCount: list.length + (canAdd ? 1 : 0),
-            itemBuilder: (context, i) {
-              if (i == list.length) {
-                return _AddCard(
-                  onTap: () => _showCreateDialog(context, ref),
-                );
-              }
-              return _JournalCover(
-                journal: list[i],
-                onTap: () => context.push('/journal/${list[i].id}'),
-                onLongPress: () => _confirmDelete(context, ref, list[i]),
-              );
-            },
-          );
-        },
+          ),
+          Expanded(
+            child: journals.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Colors.white54)),
+              error: (_, __) => _buildGrid(context, ref, [], maxJournals, navH),
+              data: (list) => _buildGrid(context, ref, list, maxJournals, navH),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, WidgetRef ref,
+      List<Journal> list, int maxJournals, double navH) {
+    final canAdd = list.length < maxJournals;
+    final count = list.length + (canAdd ? 1 : 0);
+
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, navH + 16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 10 / 14,
+      ),
+      itemCount: count,
+      itemBuilder: (context, i) {
+        if (i == list.length) {
+          return _AddCard(onTap: () => _showCreateDialog(context, ref));
+        }
+        return _JournalCover(
+          journal: list[i],
+          onTap: () => context.push('/journal/${list[i].id}'),
+          onLongPress: () => _confirmDelete(context, ref, list[i]),
+        );
+      },
     );
   }
 
   void _showCreateDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (_) => const _CreateDialog(),
-    );
+    showDialog(context: context, builder: (_) => const _CreateDialog());
   }
 
-  Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Journal journal) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Journal journal) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete journal?'),
-        content: Text(
-            '"${journal.title}" and all its pages will be permanently deleted.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      barrierColor: Colors.black54,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('"${journal.title}"\nwill be permanently deleted.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87)),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE53935),
+                    side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                  child: const Text('No', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE53935),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                  child: const Text('Yes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                )),
+              ]),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
-        ],
+        ),
       ),
     );
     if (ok == true) {
@@ -103,7 +138,7 @@ class JournalListScreen extends ConsumerWidget {
   }
 }
 
-// ── Journal cover card ────────────────────────────────────────────────────────
+// ─── Journal cover card ────────────────────────────────────────────────────────
 
 class _JournalCover extends StatelessWidget {
   final Journal journal;
@@ -120,7 +155,8 @@ class _JournalCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = coverColorValue(journal.coverColor);
     final isDark = coverIsDark(journal.coverColor);
-    final textColor = isDark ? Colors.white : AppColors.inkBlack;
+    final lineColor = (isDark ? Colors.white : Colors.black).withOpacity(0.18);
+    final textColor = isDark ? Colors.white70 : const Color(0xFF888070);
 
     return GestureDetector(
       onTap: onTap,
@@ -128,62 +164,47 @@ class _JournalCover extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.18),
-              blurRadius: 6,
-              offset: const Offset(2, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Stack(
           children: [
-            // Spine
+            // Left binding line
             Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 8,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.black.withOpacity(0.1),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(4),
-                    bottomLeft: Radius.circular(4),
-                  ),
-                ),
+              left: 20, top: 20, bottom: 20,
+              child: Container(width: 1, color: lineColor),
+            ),
+            // Top-right tab lines
+            Positioned(
+              top: 18, right: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(width: 28, height: 3.5,
+                    decoration: BoxDecoration(
+                      color: lineColor,
+                      borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 5),
+                  Container(width: 20, height: 3.5,
+                    decoration: BoxDecoration(
+                      color: lineColor,
+                      borderRadius: BorderRadius.circular(2))),
+                ],
               ),
             ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(),
-                  Text(
-                    journal.title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${journal.pageCount} pages',
-                    style: TextStyle(
-                      color: textColor.withOpacity(0.55),
-                      fontSize: 10,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ],
+            // Title bottom-right
+            Positioned(
+              bottom: 14, right: 14, left: 28,
+              child: Text(
+                journal.title,
+                textAlign: TextAlign.right,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                ),
               ),
             ),
           ],
@@ -193,7 +214,7 @@ class _JournalCover extends StatelessWidget {
   }
 }
 
-// ── Add card ──────────────────────────────────────────────────────────────────
+// ─── Add card ──────────────────────────────────────────────────────────────────
 
 class _AddCard extends StatelessWidget {
   final VoidCallback onTap;
@@ -205,33 +226,18 @@ class _AddCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.paper,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppColors.stampBorder, width: 1.5),
+          color: const Color(0xFF6B6459),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, size: 32, color: AppColors.textSecondary),
-              SizedBox(height: 4),
-              Text(
-                'New Journal',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          child: Icon(Icons.add, size: 44, color: Colors.white),
         ),
       ),
     );
   }
 }
 
-// ── Create dialog ─────────────────────────────────────────────────────────────
+// ─── Create dialog ─────────────────────────────────────────────────────────────
 
 class _CreateDialog extends ConsumerStatefulWidget {
   const _CreateDialog();
@@ -247,16 +253,12 @@ class _CreateDialogState extends ConsumerState<_CreateDialog> {
   bool _saving = false;
 
   @override
-  void dispose() {
-    _titleCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _titleCtrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('New Journal',
-          style: TextStyle(fontWeight: FontWeight.w800)),
+      title: const Text('New Journal', style: TextStyle(fontWeight: FontWeight.w700)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -268,20 +270,16 @@ class _CreateDialogState extends ConsumerState<_CreateDialog> {
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 16),
-            const Text('Cover',
-                style:
-                    TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            const Text('Cover', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 8, runSpacing: 8,
               children: kCoverColors.entries.map((e) {
                 final selected = _color == e.key;
                 return GestureDetector(
                   onTap: () => setState(() => _color = e.key),
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 32, height: 32,
                     decoration: BoxDecoration(
                       color: e.value,
                       shape: BoxShape.circle,
@@ -294,26 +292,19 @@ class _CreateDialogState extends ConsumerState<_CreateDialog> {
               }).toList(),
             ),
             const SizedBox(height: 16),
-            const Text('Paper',
-                style:
-                    TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            const Text('Paper', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 6, runSpacing: 6,
               children: PaperStyle.values.map((s) {
                 final sel = _style == s;
-                final label =
-                    s.name[0].toUpperCase() + s.name.substring(1);
                 return ChoiceChip(
-                  label: Text(label),
+                  label: Text(s.name[0].toUpperCase() + s.name.substring(1)),
                   selected: sel,
                   onSelected: (_) => setState(() => _style = s),
                   selectedColor: AppColors.inkBlack,
                   labelStyle: TextStyle(
-                    color: sel ? AppColors.cream : AppColors.inkBlack,
-                    fontSize: 12,
-                  ),
+                    color: sel ? AppColors.cream : AppColors.inkBlack, fontSize: 12),
                 );
               }).toList(),
             ),
@@ -327,16 +318,9 @@ class _CreateDialogState extends ConsumerState<_CreateDialog> {
         ),
         ElevatedButton(
           onPressed: _saving ? null : _create,
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(80, 36),
-            textStyle: const TextStyle(fontSize: 13),
-          ),
           child: _saving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.cream))
+              ? const SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.cream))
               : const Text('Create'),
         ),
       ],
@@ -350,17 +334,16 @@ class _CreateDialogState extends ConsumerState<_CreateDialog> {
     if (uid == null) return;
     try {
       await ref.read(journalRepositoryProvider).createJournal(
-            uid: uid,
-            title: _titleCtrl.text.trim(),
-            paperStyle: _style,
-            coverColor: _color,
-          );
+        uid: uid,
+        title: _titleCtrl.text.trim(),
+        paperStyle: _style,
+        coverColor: _color,
+      );
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }

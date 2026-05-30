@@ -81,7 +81,7 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 64),
-              Image.asset('assets/2.png', width: 56),
+              Image.asset('assets/icon_stamp.png', width: 56),
               const SizedBox(height: 24),
               const Text(
                 'You\'re invited.',

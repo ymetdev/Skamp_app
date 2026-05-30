@@ -208,7 +208,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         previewRatio < screenRatio ? size.width / (size.height * previewRatio) : 1.0;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF1A1A1A),
       body: Stack(
         children: [
           // Camera preview (full screen)
@@ -270,7 +270,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final stampH = stampW / kStampAspect;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF1A1A1A),
       body: Stack(
         children: [
           // Full-frame background (blurred)
@@ -382,7 +382,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   // ── States ─────────────────────────────────────────────────────────────────
 
   Widget _buildLoading() => const Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF1A1A1A),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -397,7 +397,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
 
   Widget _buildError() => Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF1A1A1A),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

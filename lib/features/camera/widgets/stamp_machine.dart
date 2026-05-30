@@ -11,15 +11,15 @@ class _Machine {
 }
 
 const _kMachines = [
-  _Machine('assets/x1.png', StampShape.perforated),
-  _Machine('assets/x2.png', StampShape.serrated),
-  _Machine('assets/x3.png', StampShape.rounded),
-  _Machine('assets/x4.png', StampShape.rectangle),
+  _Machine('assets/machine_perforated.png', StampShape.perforated),
+  _Machine('assets/machine_serrated.png', StampShape.serrated),
+  _Machine('assets/machine_rounded.png', StampShape.rounded),
+  _Machine('assets/machine_rect.png', StampShape.rectangle),
 ];
 
 // ─── Main overlay ─────────────────────────────────────────────────────────────
 
-class StampMachineOverlay extends StatelessWidget {
+class StampMachineOverlay extends StatefulWidget {
   final StampShape shape;
   final bool isCapturing;
   final VoidCallback onCapture;
@@ -33,58 +33,85 @@ class StampMachineOverlay extends StatelessWidget {
     required this.onShapeSelected,
   });
 
-  int get _machineIndex {
-    final idx = _kMachines.indexWhere((m) => m.shape == shape);
-    return idx >= 0 ? idx : 0;
+  @override
+  State<StampMachineOverlay> createState() => _StampMachineOverlayState();
+}
+
+class _StampMachineOverlayState extends State<StampMachineOverlay> {
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    final idx = _kMachines.indexWhere((m) => m.shape == widget.shape);
+    _pageController = PageController(initialPage: idx >= 0 ? idx : 0);
+  }
+
+  @override
+  void didUpdateWidget(StampMachineOverlay old) {
+    super.didUpdateWidget(old);
+    if (old.shape != widget.shape && _pageController.hasClients) {
+      final idx = _kMachines.indexWhere((m) => m.shape == widget.shape);
+      if (idx >= 0) {
+        _pageController.animateToPage(
+          idx,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final w = size.width * 0.82;
-    final machine = _kMachines[_machineIndex];
+    final w = MediaQuery.of(context).size.width * .8;
 
-    return Center(
-      child: SizedBox(
-        width: w,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Machine PNG — transparent viewfinder lets camera show through
-            Image.asset(
-              machine.asset,
+    return PageView.builder(
+      controller: _pageController,
+      clipBehavior: Clip.none,
+      itemCount: _kMachines.length,
+      onPageChanged: (i) => widget.onShapeSelected(_kMachines[i].shape),
+      itemBuilder: (context, i) {
+        final machine = _kMachines[i];
+        return OverflowBox(
+          maxWidth: double.infinity,
+          maxHeight: double.infinity,
+          alignment: Alignment.bottomCenter,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.isCapturing ? null : widget.onCapture,
+            child: SizedBox(
               width: w,
-              fit: BoxFit.contain,
-            ),
-
-            // Invisible capture button over the slot area (bottom ~18% of machine)
-            Positioned(
-              bottom: 0,
-              left: w * 0.08,
-              right: w * 0.08,
-              height: w * 0.20,
-              child: GestureDetector(
-                onTap: isCapturing ? null : onCapture,
-                child: isCapturing
-                    ? const Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white70,
-                          ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset(machine.asset, width: w, fit: BoxFit.contain),
+                  if (widget.isCapturing)
+                    const Center(
+                      child: SizedBox(
+                        width: 22, height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white70,
                         ),
-                      )
-                    : const SizedBox.expand(),
+                      ),
+                    ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
+
+
 
 // ─── Machine shape selector (4 machines) ─────────────────────────────────────
 
@@ -100,25 +127,31 @@ class MachineSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(_kMachines.length, (i) {
-        final machine = _kMachines[i];
-        final active = machine.shape == selected;
-        return GestureDetector(
-          onTap: () => onSelected(machine.shape),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: active ? 9 : 5,
-            height: active ? 9 : 5,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: active ? Colors.white : Colors.white38,
+    return SizedBox(
+      width: 80,
+      height: 24,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(_kMachines.length, (i) {
+          final machine = _kMachines[i];
+          final active = machine.shape == selected;
+          return GestureDetector(
+            onTap: () => onSelected(machine.shape),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(active ? 1.0 : 0.3),
+                ),
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }
@@ -140,13 +173,13 @@ class MachineCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.45),
+        width: 48,
+        height: 48,
+        decoration: const BoxDecoration(
+          color: Color(0x80FFFFFF),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: Colors.white, size: 24),
       ),
     );
   }

@@ -88,9 +88,11 @@ class CloudinaryService {
     return originalUrl.replaceFirst('/upload/', '/upload/$transforms/');
   }
 
-  /// Thumbnail URL สำหรับแสดงใน feed
+  /// Thumbnail URL — crop to stamp aspect ratio (22:30) from center
   String thumbnailUrl(String originalUrl, {int size = 300}) {
-    return transformUrl(originalUrl, width: size, height: size, quality: 70);
+    final h = (size / (22 / 30)).round(); // height = width / kStampAspect
+    final transforms = 'w_$size,h_$h,c_fill,g_center,q_70,f_auto';
+    return originalUrl.replaceFirst('/upload/', '/upload/$transforms/');
   }
 }
 

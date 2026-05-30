@@ -25,11 +25,36 @@ class AuthRepository {
   }
 
   Stream<UserModel?> userStream(String uid) {
+    // Sync Firebase Auth profile fields into Firestore if they're missing
+    _syncProfileIfNeeded(uid);
+
     return _firestore
         .collection('users')
         .doc(uid)
         .snapshots()
         .map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
+  }
+
+  Future<void> _syncProfileIfNeeded(String uid) async {
+    final authUser = _auth.currentUser;
+    if (authUser == null) return;
+
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (!doc.exists) return;
+
+    final data = doc.data()!;
+    final updates = <String, dynamic>{};
+
+    if (data['photoURL'] == null && authUser.photoURL != null) {
+      updates['photoURL'] = authUser.photoURL;
+    }
+    if (data['displayName'] == null && authUser.displayName != null) {
+      updates['displayName'] = authUser.displayName;
+    }
+
+    if (updates.isNotEmpty) {
+      await _firestore.collection('users').doc(uid).update(updates);
+    }
   }
 
   Future<UserCredential> signInWithGoogle() => googleSignIn(_auth);

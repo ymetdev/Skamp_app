@@ -11,7 +11,19 @@ import '../../features/stamps/screens/collection_screen.dart';
 import '../../features/journals/screens/journal_list_screen.dart';
 import '../../features/journals/screens/journal_detail_screen.dart';
 import '../../features/journals/screens/journal_page_screen.dart';
+import '../../features/profile/screens/profile_screen.dart';
 import '../providers/app_config_provider.dart';
+
+// true หลังจาก splash แสดงครบ minimum duration แล้ว
+class _SplashReadyNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void setReady() => state = true;
+}
+
+final splashReadyProvider = NotifierProvider<_SplashReadyNotifier, bool>(
+  _SplashReadyNotifier.new,
+);
 
 class _RouterNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -20,6 +32,7 @@ class _RouterNotifier extends ChangeNotifier {
     _ref.listen(authStateProvider, (_, __) => notifyListeners());
     _ref.listen(userProvider, (_, __) => notifyListeners());
     _ref.listen(appConfigProvider, (_, __) => notifyListeners());
+    _ref.listen(splashReadyProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -28,18 +41,22 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(notifier.dispose);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/loading',
     refreshListenable: notifier,
     redirect: (context, state) {
+      final splashReady = ref.read(splashReadyProvider);
       final authState = ref.read(authStateProvider);
       final userState = ref.read(userProvider);
       final configState = ref.read(appConfigProvider);
 
+      final loc = state.matchedLocation;
+
+      // รอ splash ครบ minimum duration ก่อน
+      if (!splashReady) return loc == '/loading' ? null : '/loading';
+
       final isLoggedIn = authState.value != null;
       final user = userState.value;
       final inviteOnly = configState.value?.inviteOnly ?? true;
-
-      final loc = state.matchedLocation;
 
       // ยังไม่ login → login
       if (!isLoggedIn) return loc == '/login' ? null : '/login';
@@ -95,10 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Section screens pushed from top bar buttons
       GoRoute(path: '/stamps', builder: (_, __) => const CollectionScreen()),
       GoRoute(path: '/journals', builder: (_, __) => const JournalListScreen()),
-      GoRoute(path: '/profile', builder: (_, state) {
-        // Reuse home screen on profile tab
-        return const HomeScreen();
-      }),
+      GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
 
       // Journal detail + page editing
       GoRoute(
@@ -120,28 +134,28 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 // ─── Animated loading splash ───────────────────────────────────────────────────
 
-class _LoadingSplash extends StatefulWidget {
+class _LoadingSplash extends ConsumerStatefulWidget {
   const _LoadingSplash();
 
   @override
-  State<_LoadingSplash> createState() => _LoadingSplashState();
+  ConsumerState<_LoadingSplash> createState() => _LoadingSplashState();
 }
 
-class _LoadingSplashState extends State<_LoadingSplash>
+class _LoadingSplashState extends ConsumerState<_LoadingSplash>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
+  late final AnimationController _bounceCtrl;
   late final Animation<double> _offsetY;
   late final Animation<double> _shadowOpacity;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+
+    _bounceCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
 
-    // Lift → drop → small bounce → rest
     _offsetY = TweenSequence([
       TweenSequenceItem(
         tween: Tween(begin: 0.0, end: -22.0)
@@ -167,7 +181,7 @@ class _LoadingSplashState extends State<_LoadingSplash>
         tween: ConstantTween(0.0),
         weight: 22,
       ),
-    ]).animate(_ctrl);
+    ]).animate(_bounceCtrl);
 
     _shadowOpacity = TweenSequence([
       TweenSequenceItem(
@@ -194,40 +208,48 @@ class _LoadingSplashState extends State<_LoadingSplash>
         tween: ConstantTween(0.20),
         weight: 22,
       ),
-    ]).animate(_ctrl);
+    ]).animate(_bounceCtrl);
+
+    // Unlock routing after minimum splash duration
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) ref.read(splashReadyProvider.notifier).setReady();
+    });
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _bounceCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0E8D0),
+      backgroundColor: const Color(0xFFFFAEAD),
       body: Center(
         child: AnimatedBuilder(
-          animation: _ctrl,
+          animation: _bounceCtrl,
           builder: (_, __) {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Transform.translate(
                   offset: Offset(0, _offsetY.value),
-                  child: Image.asset('assets/2.png', width: 88),
+                  child: Image.asset('assets/icon_stamp.png', width: 140),
                 ),
                 Container(
-                  width: 52,
-                  height: 6,
+                  width: 80,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(_shadowOpacity.value),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(height: 32),
-                Image.asset('assets/4.png', width: 120),
+                const SizedBox(height: 8),
+                Image.asset(
+                  'assets/wordmark_anim.gif',
+                  width: 180,
+                ),
               ],
             );
           },
