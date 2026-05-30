@@ -123,7 +123,7 @@ class _CameraTabState extends ConsumerState<_CameraTab>
   bool _initialized = false;
   String? _error;
   XFile? _capturedFile;
-  StampShape _shape = StampShape.rounded;
+  StampShape _shape = StampShape.perforated; // machine x1 default
   bool _isCapturing = false;
   final _pageController = PageController();
 
@@ -306,7 +306,7 @@ class _CameraTabState extends ConsumerState<_CameraTab>
                 children: [
                   MachineCircleButton(icon: Icons.person_add_outlined, onTap: () {}),
                   Expanded(
-                    child: Center(child: _ShapeDotsBar(
+                    child: Center(child: MachineSelector(
                       selected: _shape,
                       onSelected: (s) => setState(() => _shape = s),
                     )),
@@ -459,36 +459,6 @@ class _CameraTabState extends ConsumerState<_CameraTab>
   );
 }
 
-// ─── Shape dots (top bar) ──────────────────────────────────────────────────────
-
-class _ShapeDotsBar extends StatelessWidget {
-  final StampShape selected;
-  final ValueChanged<StampShape> onSelected;
-  const _ShapeDotsBar({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: StampShape.values.map((s) {
-        final active = s == selected;
-        return GestureDetector(
-          onTap: () => onSelected(s),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: active ? 8 : 5,
-            height: active ? 8 : 5,
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: active ? Colors.white : Colors.white38,
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
 
 // ─── Daily counter ─────────────────────────────────────────────────────────────
 
